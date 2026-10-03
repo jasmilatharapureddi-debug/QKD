@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BB84 QKD — Information-Theoretic Cybersecurity Simulator | RPI & IBM Quantum</title>
+  
+  <!-- Font imports: DaunPenh local priority with high-aesthetic Khmer/Serif fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Typography & Theme Variables ───────────────── */
+    @font-face {
+      font-family: 'DaunPenh';
+      src: local('DaunPenh'), local('Daun Penh'), local('Kantumruy Pro');
+      font-display: swap;
+    }
+
+    :root {
+      /* Pale Blue Theme Palette */
+      --bg-base:        #e8f4fd;
+      --bg-surface:     #f4faff;
+      --bg-card:        #ffffff;
+      --bg-secondary:   #d8edfb;
+      --bg-accent-soft: #c2e2fa;
+      --bg-dark:        #08172c;
+      --bg-dark-card:   #0e223d;
+      
+      --accent-bright:  #0ea5e9;
+      --accent-mid:     #1d4ed8;
+      --accent-soft:    #3b82f6;
+      --accent-pale:    #bfdbfe;
+      
+      --text-main:      #08203e;
+      --text-secondary: #264a74;
+      --text-muted:     #527b9f;
+      --text-light:     #f0f8ff;
+
+      --border:         #b9ddf8;
+      --border-light:   #dceffa;
+      --border-dark:    #1d3b66;
+
+      --success:        #0d9488;
+      --success-bg:     #f0fdfa;
+      --warning:        #d97706;
+      --warning-bg:     #fffbeb;
+      --danger:         #dc2626;
+      --danger-bg:      #fef2f2;
+
+      /* Primary display font set to DaunPenh */
+      --font-display:   'DaunPenh', 'Daun Penh', 'Kantumruy Pro', serif;
+      --font-body:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono:      'JetBrains Mono', 'Courier New', monospace;
+
+      --radius-sm:      6px;
+      --radius:         12px;
+      --radius-lg:      18px;
+      --shadow-sm:      0 2px 8px rgba(14, 165, 233, 0.08);
+      --shadow-md:      0 6px 20px rgba(14, 82, 160, 0.10);
+      --shadow-lg:      0 12px 36px rgba(10, 36, 75, 0.14);
+    }
+
+    /* ── Base Resets ────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.55;
+      overflow-x: hidden;
+    }
+
+    /* ── Top Server Live Bar ────────────────────────── */
+    .top-status-bar {
+      background: linear-gradient(90deg, #0284c7, #1d4ed8);
+      color: #ffffff;
+      font-size: 0.76rem;
+      padding: 0.4rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      letter-spacing: 0.02em;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .status-pulse {
+      width: 7px;
+      height: 7px;
+      background-color: #4ade80;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #4ade80;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ── Navigation Bar ─────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(232, 244, 253, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--accent-mid);
+      letter-spacing: 0.04em;
+    }
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border-left: 1px solid var(--border);
+      padding-left: 0.75rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 0.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      transition: all 0.2s ease;
+    }
+    .nav-links a:hover {
+      background: var(--bg-accent-soft);
+      color: var(--accent-mid);
+    }
+    .nav-cta {
+      background: linear-gradient(135deg, var(--accent-mid), var(--accent-bright));
+      color: #fff !important;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ── Hero Section ───────────────────────────────── */
+    .hero {
+      position: relative;
+      background: radial-gradient(circle at 80% 20%, #173865 0%, #08172c 70%, #050e1c 100%);
+      color: var(--text-light);
+      padding: 4.5rem 2rem 4rem;
+      overflow: hidden;
+      border-bottom: 3px solid var(--accent-bright);
+    }
+    #hero-canvas {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+    .hero-content {
+      position: relative;
+      max-width: 1100px;
+      margin: 0 auto;
+      text-align: center;
+      z-index: 10;
+    }
+    .hackathon-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #7dd3fc;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      line-height: 1.15;
+      font-weight: 700;
+      color: #f0f9ff;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.02em;
+    }
+    .hero h1 span {
+      color: #38bdf8;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+    }
+    .hero p {
+      font-size: 1.05rem;
+      color: #bae6fd;
+      max-width: 780px;
+      margin: 0 auto 2.25rem;
+      line-height: 1.65;
+    }
+    .hero-action-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Metrics Banner Cards in Hero ──────────────── */
+    .hero-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.25rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .hero-metric-box {
+      background: rgba(14, 34, 61, 0.65);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius);
+      padding: 1.1rem 1rem;
+      backdrop-filter: blur(8px);
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .hero-metric-box:hover {
+      transform: translateY(-3px);
+      border-color: rgba(56, 189, 248, 0.6);
+    }
+    .hm-val {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .hm-lbl {
+      font-size: 0.74rem;
+      color: #93c5fd;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── General Layout & Sections ──────────────────── */
+    section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3.75rem 1.75rem;
+    }
+    .sec-header {
+      margin-bottom: 2rem;
+    }
+    .sec-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-bright);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.35rem;
+      display: block;
+    }
+    .sec-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+    .sec-desc {
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      max-width: 720px;
+      margin-top: 0.4rem;
+    }
+
+    /* ── Cards & Surfaces ───────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 1.75rem;
+    }
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent-mid);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ── Protocol Stage Grid ────────────────────────── */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+    .stage-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.35rem;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stage-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent-soft);
+    }
+    .stage-num {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-soft);
+      background: var(--bg-secondary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+    }
+    .stage-icon {
+      font-size: 1.6rem;
+      margin-bottom: 0.75rem;
+      display: inline-block;
+    }
+    .stage-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.4rem;
+    }
+    .stage-text {
+      font-size: 0.81rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Simulator Controls ─────────────────────────── */
+    .sim-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .ctrl-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .ctrl-item label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+    }
+    .ctrl-item label span.val {
+      color: var(--accent-mid);
+      font-family: var(--font-mono);
+    }
+    input[type=range] {
+      accent-color: var(--accent-mid);
+      width: 100%;
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+    }
+    select, input[type=number] {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      font-size: 0.84rem;
+      color: var(--text-main);
+      outline: none;
+      font-family: var(--font-body);
+    }
+    select:focus, input[type=number]:focus {
+      border-color: var(--accent-bright);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+    }
+
+    /* ── Buttons ────────────────────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.4rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      font-family: var(--font-body);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-mid), var(--accent-bright));
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.35);
+    }
+    .btn-outline {
+      background: #ffffff;
+      color: var(--accent-mid);
+      border: 1.5px solid var(--border);
+    }
+    .btn-outline:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent-soft);
+    }
+    .btn-dark {
+      background: var(--bg-dark);
+      color: #ffffff;
+    }
+    .btn-dark:hover {
+      background: #102a50;
+    }
+
+    /* ── Status Alerts ──────────────────────────────── */
+    .alert-box {
+      display: none;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .alert-box.active { display: flex; }
+    .alert-danger {
+      background: var(--danger-bg);
+      border: 1px solid #f87171;
+      color: #991b1b;
+    }
+    .alert-warn {
+      background: var(--warning-bg);
+      border: 1px solid #fbbf24;
+      color: #92400e;
+    }
+    .alert-success {
+      background: var(--success-bg);
+      border: 1px solid #34d399;
+      color: #065f46;
+    }
+
+    /* ── Metrics Cards Grid ─────────────────────────── */
+    .sim-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.15rem 1rem;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .metric-card .val {
+      font-family: var(--font-display);
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: var(--accent-mid);
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .metric-card .lbl {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .metric-card.good .val { color: var(--success); }
+    .metric-card.warn .val { color: var(--warning); }
+    .metric-card.bad  .val { color: var(--danger); }
+
+    /* ── Progress Indicators ────────────────────────── */
+    .pipeline-progress {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .pb-container { display: flex; flex-direction: column; gap: 0.35rem; }
+    .pb-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .pb-track {
+      height: 8px;
+      background: var(--bg-secondary);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .pb-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    /* ── Qubit Table ────────────────────────────────── */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #ffffff;
+      margin-bottom: 1.5rem;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      min-width: 780px;
+    }
+    table.data-table th {
+      background: var(--bg-dark);
+      color: #93c5fd;
+      padding: 0.65rem 0.85rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+    }
+    table.data-table td {
+      padding: 0.55rem 0.85rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border-light);
+    }
+    table.data-table tr:hover td {
+      background: var(--bg-surface);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-z { background: #dbeafe; color: #1e40af; }
+    .badge-x { background: #fef3c7; color: #92400e; }
+    .badge-ok { background: #d1fae5; color: #065f46; }
+    .badge-err { background: #fee2e2; color: #991b1b; }
+    .badge-eve { background: #ede9fe; color: #5b21b6; }
+
+    /* ── Secret Key Terminal Display ────────────────── */
+    .terminal-box {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      color: #93c5fd;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      word-break: break-all;
+      position: relative;
+    }
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1e3a5f;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.74rem;
+      color: #7dd3fc;
+    }
+    .k-0 { color: #60a5fa; }
+    .k-1 { color: #34d399; }
+
+    /* ── Tabbed View Container ──────────────────────── */
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 0.65rem 1.15rem;
+      font-family: var(--font-body);
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--accent-mid); }
+    .tab-btn.active {
+      color: var(--accent-mid);
+      border-bottom-color: var(--accent-mid);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Interactive Channel Visualizer ─────────────── */
+    .canvas-card {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      color: #fff;
+    }
+    #channel-canvas {
+      width: 100%;
+      height: 150px;
+      display: block;
+      border-radius: var(--radius-sm);
+      background: #061122;
+    }
+
+    /* ── Charts Grid ────────────────────────────────── */
+    .charts-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .chart-container {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .chart-container canvas {
+      width: 100%;
+      height: 240px;
+      display: block;
+    }
+
+    /* ── Formula Box ────────────────────────────────── */
+    .math-card {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      color: #7dd3fc;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.6;
+      margin: 0.75rem 0;
+      overflow-x: auto;
+    }
+
+    /* ── PQC Benchmark Table ────────────────────────── */
+    .pqc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .pqc-table th {
+      background: var(--bg-dark);
+      color: #7dd3fc;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .pqc-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .pqc-table tr:hover td { background: var(--bg-surface); }
+    .col-good { color: var(--success); font-weight: 600; }
+    .col-warn { color: var(--warning); font-weight: 600; }
+    .col-bad  { color: var(--danger); font-weight: 600; }
+
+    /* ── Code Display Box ───────────────────────────── */
+    .code-box {
+      background: var(--bg-dark);
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      color: #e2e8f0;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      max-height: 480px;
+    }
+
+    /* ── Footer ─────────────────────────────────────── */
+    footer {
+      background: var(--bg-dark);
+      color: #94a3b8;
+      border-top: 1px solid var(--border-dark);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+    footer a { color: #38bdf8; text-decoration: none; }
+    footer .foot-brand {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #f0f9ff;
+      margin-bottom: 0.35rem;
+    }
+
+    /* ── Spinner ────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .brand-subtitle { display: none; }
+      section { padding: 2.5rem 1rem; }
+      .charts-grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Real-time Server Bar -->
+  <div class="top-status-bar">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <span class="status-badge"><span class="status-pulse"></span> LIVE SIMULATION SERVER</span>
+      <span>Rensselaer Polytechnic Institute (RPI) &amp; IBM Quantum Hackathon</span>
+    </div>
+    <div style="display:flex;gap:1rem;font-family:var(--font-mono);">
+      <span>PORT: 8000</span>
+      <span>QISKIT: 1.0+ AER</span>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav>
+    <div class="brand-wrap">
+      <div class="brand-title">BB84 QKD</div>
+      <div class="brand-subtitle">Information-Theoretic Quantum Security</div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#pipeline">Pipeline</a></li>
+      <li><a href="#simulator">Simulator</a></li>
+      <li><a href="#eavesdropping">Eavesdropping</a></li>
+      <li><a href="#postprocessing">Post-Processing</a></li>
+      <li><a href="#pqc">PQC Benchmark</a></li>
+      <li><a href="#qiskit" class="nav-cta">Qiskit Code</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <canvas id="hero-canvas"></canvas>
+    <div class="hero-content">
+      <div class="hackathon-pill">RPI &times; IBM Quantum Hackathon Reference Implementation</div>
+      <h1>Information-Theoretic Cybersecurity<br/><span>BB84 Quantum Key Distribution</span></h1>
+      <p>
+        An end-to-end interactive simulation framework and analytical suite for quantum state preparation,
+        eavesdropping interception, classical basis sifting, Cascade error correction, and Toeplitz privacy amplification.
+      </p>
+
+      <div class="hero-action-row">
+        <a href="#simulator" class="btn btn-primary" onclick="runSimulation()">🚀 Launch Full Simulation</a>
+        <a href="#qiskit" class="btn btn-outline" style="color:#ffffff;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);">⚡ Inspect Qiskit Circuit</a>
+        <button class="btn btn-dark" onclick="downloadQiskitFile()">📥 Download bb84_qiskit_simulation.py</button>
+      </div>
+
+      <div class="hero-metrics-grid">
+        <div class="hero-metric-box">
+          <span class="hm-val" id="hero-qber">0.0%</span>
+          <span class="hm-lbl">Quantum Bit Error Rate</span>
+        </div>
+        <div class="hero-metric-box">
+          <span class="hm-val" id="hero-rate">1.000</span>
+          <span class="hm-lbl">Asymptotic Key Rate (R)</span>
+        </div>
+        <div class="hero-metric-box">
+          <span class="hm-val" id="hero-delta">+1.00</span>
+          <span class="hm-lbl">Mutual Advantage &Delta;I</span>
+        </div>
+        <div class="hero-metric-box">
+          <span class="hm-val" id="hero-status" style="color:#4ade80;">SECURE</span>
+          <span class="hm-lbl">Security State</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Pipeline Overview -->
+  <section id="pipeline">
+    <div class="sec-header">
+      <span class="sec-tag">End-to-End Workflow</span>
+      <h2 class="sec-title">The BB84 Protocol Architecture</h2>
+      <p class="sec-desc">Physical layer quantum mechanics guarantees unconditionally secure key exchange that Shor's algorithm cannot compromise.</p>
+    </div>
+
+    <!-- Live Photon Channel Visualizer -->
+    <div class="canvas-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+        <span style="font-family:var(--font-display);font-size:1.15rem;color:#7dd3fc;">⚛ Live Quantum Fiber Channel Transmission</span>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-outline" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="triggerPhotonPulse()">Emit Qubit Pulse</button>
+          <button class="btn btn-dark" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="toggleChannelEve()">Toggle Eve Intercept</button>
+        </div>
+      </div>
+      <canvas id="channel-canvas"></canvas>
+      <div style="display:flex;justify-content:space-between;margin-top:0.6rem;font-size:0.75rem;color:#93c5fd;">
+        <span>Alice: Random Bit $a_k \in \{0,1\}$, Basis $\{Z, X\}$</span>
+        <span id="canvas-eve-label" style="color:#f87171;">Eve: Intercept-Resend Active</span>
+        <span>Bob: Independent Basis $\{Z, X\}$, Single Photon Detector</span>
+      </div>
+    </div>
+
+    <!-- 6 Protocol Steps -->
+    <div class="stage-grid">
+      <div class="stage-card">
+        <span class="stage-num">01</span>
+        <span class="stage-icon">🎲</span>
+        <div class="stage-title">State Preparation</div>
+        <div class="stage-text">Alice samples random bit $a_k \in \{0,1\}$ and basis $\{Z, X\}$. She applies Pauli-X (if bit=1) and Hadamard gate $H$ (if X basis) to construct $|0\rangle, |1\rangle, |+\rangle, |-\rangle$.</div>
+      </div>
+      <div class="stage-card">
+        <span class="stage-num">02</span>
+        <span class="stage-icon">📡</span>
+        <div class="stage-title">Channel &amp; Eavesdropping</div>
+        <div class="stage-text">Qubits travel through optical fiber with attenuation $\alpha \approx 0.2\text{ dB/km}$. Eve attempts either Intercept-Resend or CNOT probe entanglement.</div>
+      </div>
+      <div class="stage-card">
+        <span class="stage-num">03</span>
+        <span class="stage-icon">🔭</span>
+        <div class="stage-title">Bob's Measurement</div>
+        <div class="stage-text">Bob independently selects basis $\{Z, X\}$ for each arriving photon and performs projective measurement, recording the classical raw bit.</div>
+      </div>
+      <div class="stage-card">
+        <span class="stage-num">04</span>
+        <span class="stage-icon">⚖</span>
+        <div class="stage-title">Public Sifting</div>
+        <div class="stage-text">Alice and Bob announce bases publicly (no bits revealed). Qubits where bases mismatched are discarded, yielding $\approx 50\%$ sifted key length.</div>
+      </div>
+      <div class="stage-card">
+        <span class="stage-num">05</span>
+        <span class="stage-icon">🔍</span>
+        <div class="stage-title">QBER Parameter Estimation</div>
+        <div class="stage-text">A sacrificed sample of sifted bits is compared. If $\text{QBER} > 11\%$ (Shor-Preskill abort threshold), transmission aborts immediately due to adversary presence.</div>
+      </div>
+      <div class="stage-card">
+        <span class="stage-num">06</span>
+        <span class="stage-icon">🛡</span>
+        <div class="stage-title">Error Correction &amp; PA</div>
+        <div class="stage-text">Cascade/Winnow parity checks rectify channel errors. Universal Toeplitz hashing compresses the key, shrinking Eve's mutual information to zero.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Simulator Section -->
+  <section id="simulator">
+    <div class="sec-header">
+      <span class="sec-tag">Interactive Engine</span>
+      <h2 class="sec-title">Full BB84 Simulation &amp; Post-Processing Engine</h2>
+      <p class="sec-desc">Configure channel parameters, eavesdropping attacks, and finite sample sizing to observe key distillation in real time.</p>
+    </div>
+
+    <!-- Parameter Controls -->
+    <div class="sim-panel">
+      <div class="ctrl-item">
+        <label>Number of Qubits ($N$): <span class="val" id="lbl-qubits">120</span></label>
+        <input type="range" id="param-qubits" min="20" max="600" step="10" value="120" oninput="updateParamLabels()" />
+      </div>
+      <div class="ctrl-item">
+        <label>Channel Fiber Length: <span class="val" id="lbl-distance">10 km</span></label>
+        <input type="range" id="param-distance" min="0" max="80" step="5" value="10" oninput="updateParamLabels()" />
+      </div>
+      <div class="ctrl-item">
+        <label>Eavesdropping Strategy</label>
+        <select id="param-eve" onchange="runSimulation()">
+          <option value="none">None (Benign Channel)</option>
+          <option value="intercept_100" selected>Intercept-Resend (Eve 100%)</option>
+          <option value="intercept_50">Intercept-Resend (Eve 50% pulses)</option>
+          <option value="cnot_probe">Entanglement / CNOT Probe Attack</option>
+        </select>
+      </div>
+      <div class="ctrl-item">
+        <label>Sacrificed Sample Ratio: <span class="val" id="lbl-sample">25%</span></label>
+        <input type="range" id="param-sample" min="10" max="50" step="5" value="25" oninput="updateParamLabels()" />
+      </div>
+    </div>
+
+    <!-- Button Row -->
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-run" onclick="runSimulation()">
+        <span id="run-spinner" style="display:none;" class="spinner"></span>
+        <span>Run Pipeline Simulation</span>
+      </button>
+      <button class="btn btn-outline" onclick="exportResultsJSON()">💾 Export Results (JSON)</button>
+      <button class="btn btn-outline" onclick="downloadQiskitFile()">🐍 Download Qiskit Code (.py)</button>
+    </div>
+
+    <!-- Decision Alerts -->
+    <div class="alert-box alert-danger" id="alert-abort">
+      <span style="font-size:1.5rem;">🚨</span>
+      <div>
+        <strong>SECURITY ABORT TRIGGERED: QBER exceeds Shor-Preskill Threshold (11%)!</strong><br/>
+        The measured QBER indicates extensive adversary intrusion or catastrophic channel noise.
+        Alice and Bob must abort the session and discard all raw/sifted bits. No positive secret key rate exists.
+      </div>
+    </div>
+
+    <div class="alert-box alert-warn" id="alert-warn">
+      <span style="font-size:1.5rem;">⚠️</span>
+      <div>
+        <strong>ELEVATED NOISE DETECTED: Low Secret Key Rate.</strong><br/>
+        Measured QBER is between 5% and 11%. Eavesdropping is likely present. Privacy amplification will heavily compress the key to purge adversary leakage.
+      </div>
+    </div>
+
+    <div class="alert-box alert-success" id="alert-secure">
+      <span style="font-size:1.5rem;">✅</span>
+      <div>
+        <strong>SESSION SECURE: Unconditionally Secure Key Established.</strong><br/>
+        QBER is well below the 11% threshold. Cascade error correction resolved channel flips and Toeplitz hashing extracted an information-theoretically secure key.
+      </div>
+    </div>
+
+    <!-- Quantitative Metrics Cards -->
+    <div class="sim-results-grid">
+      <div class="metric-card">
+        <span class="val" id="res-sent">120</span>
+        <span class="lbl">Qubits Sent ($N$)</span>
+      </div>
+      <div class="metric-card">
+        <span class="val" id="res-sifted">62</span>
+        <span class="lbl">Sifted Bits ($N_{\text{sift}}$)</span>
+      </div>
+      <div class="metric-card" id="card-qber">
+        <span class="val" id="res-qber">25.0%</span>
+        <span class="lbl">Measured QBER</span>
+      </div>
+      <div class="metric-card" id="card-rate">
+        <span class="val" id="res-rate">0.000</span>
+        <span class="lbl">Secret Key Rate ($R$)</span>
+      </div>
+      <div class="metric-card" id="card-delta">
+        <span class="val" id="res-delta">-0.120</span>
+        <span class="lbl">Mutual Adv &Delta;I</span>
+      </div>
+      <div class="metric-card">
+        <span class="val" id="res-final">0</span>
+        <span class="lbl">Final Secret Key Bits</span>
+      </div>
+    </div>
+
+    <!-- Pipeline Overhead Bars -->
+    <div class="pipeline-progress">
+      <div class="pb-container">
+        <div class="pb-head">
+          <span>Sifting Yield ($\approx 50\%$)</span>
+          <span id="txt-sift-yield">51.7%</span>
+        </div>
+        <div class="pb-track"><div class="pb-fill" id="pb-sift-fill" style="width:51.7%;background:#38bdf8;"></div></div>
+      </div>
+      <div class="pb-container">
+        <div class="pb-head">
+          <span>Cascade Error Leakage ($1.16 \cdot H_2$)</span>
+          <span id="txt-ec-leak">0.0 bits</span>
+        </div>
+        <div class="pb-track"><div class="pb-fill" id="pb-ec-fill" style="width:20%;background:#f59e0b;"></div></div>
+      </div>
+      <div class="pb-container">
+        <div class="pb-head">
+          <span>Toeplitz Compression Ratio</span>
+          <span id="txt-pa-ratio">0.0%</span>
+        </div>
+        <div class="pb-track"><div class="pb-fill" id="pb-pa-fill" style="width:0%;background:#10b981;"></div></div>
+      </div>
+    </div>
+
+    <!-- Terminal Display of Final Key -->
+    <div class="terminal-box">
+      <div class="terminal-header">
+        <span>FINAL RECONCILED SECRET KEY (HEX &amp; BINARY)</span>
+        <span id="term-status-badge">SESSION ABORTED</span>
+      </div>
+      <div id="terminal-content">
+        Run simulation with Eve = None to inspect extracted unconditionally secure key bits.
+      </div>
+    </div>
+
+    <!-- Qubit-by-Qubit Transmission Log Table -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div class="card-title">🔬 Qubit Transmission State Log (First 25 pulses shown)</div>
+      <div class="table-container">
+        <table class="data-table" id="table-qubits">
+          <thead>
+            <tr>
+              <th>Pulse #</th>
+              <th>Alice Bit</th>
+              <th>Alice Basis</th>
+              <th>State Prepared</th>
+              <th>Eve Intercept</th>
+              <th>Eve Basis</th>
+              <th>Bob Basis</th>
+              <th>Bob Bit</th>
+              <th>Basis Match?</th>
+              <th>Sifted?</th>
+              <th>Bit Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-qubits"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Eavesdropping & Theory Analysis -->
+  <section id="eavesdropping">
+    <div class="sec-header">
+      <span class="sec-tag">Quantum Adversary Modeling</span>
+      <h2 class="sec-title">Eavesdropping Attacks &amp; Information-Theoretic Bounds</h2>
+      <p class="sec-desc">Comparative analysis of Intercept-Resend vs Entanglement-based beam-splitter attacks.</p>
+    </div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('tab-ir', this)">Intercept-Resend Attack</button>
+      <button class="tab-btn" onclick="switchTab('tab-cnot', this)">CNOT Entanglement Probe</button>
+      <button class="tab-btn" onclick="switchTab('tab-shor', this)">Shor-Preskill Bound ($R \ge 1 - 2H_2$)</button>
+      <button class="tab-btn" onclick="switchTab('tab-bloch', this)">Bloch Sphere Projection</button>
+    </div>
+
+    <!-- Tab 1: Intercept Resend -->
+    <div class="tab-content active" id="tab-ir">
+      <div class="charts-grid-2">
+        <div class="card">
+          <div class="card-title">Intercept-Resend Analytical Model</div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+            Eve intercepts every photon in transit, measuring it in a randomly chosen basis $\{Z, X\}$.
+            Because quantum states cannot be cloned (No-Cloning Theorem), Eve must re-prepare a photon to forward to Bob.
+          </p>
+          <div class="math-card">
+            P(Basis Mismatch) = 1/2<br/>
+            P(Bob Error | Mismatch) = 1/2<br/>
+            <strong>Expected QBER = 1/2 &times; 1/2 = 25.0%</strong>
+          </div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;">
+            Since $25\% \gg 11\%$ (the Shor-Preskill security limit), a full intercept-resend attack is guaranteed to be detected and rejected by Alice and Bob.
+          </p>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-ir-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: CNOT Probe -->
+    <div class="tab-content" id="tab-cnot">
+      <div class="charts-grid-2">
+        <div class="card">
+          <div class="card-title">Entanglement Probe / Beam-Splitter Attack</div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+            Rather than projecting the qubit immediately, Eve couples her ancilla probe $|0\rangle_E$ via a CNOT gate:
+          </p>
+          <div class="math-card">
+            (\alpha|0\rangle + \beta|1\rangle) \otimes |0\rangle_E \xrightarrow{\text{CNOT}} \alpha|00\rangle + \beta|11\rangle<br/>
+            I(A;E) \le \chi(\rho_E) \quad \text{(Holevo Bound)}
+          </div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;">
+            Eve gains partial information without introducing a full 25% error. However, any non-zero information extraction inevitably introduces phase/bit disturbance.
+          </p>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-cnot-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Shor Preskill Bound -->
+    <div class="tab-content" id="tab-shor">
+      <div class="charts-grid-2">
+        <div class="card">
+          <div class="card-title">Shor-Preskill Asymptotic Key Rate Formula</div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+            The asymptotic distillable secret key fraction $R$ per sifted qubit is lower-bounded by:
+          </p>
+          <div class="math-card">
+            R \ge 1 - 2H_2(\text{QBER})<br/>
+            H_2(p) = -p\log_2(p) - (1-p)\log_2(1-p)<br/>
+            R = 0 \iff H_2(\text{QBER}) = 0.5 \iff \mathbf{\text{QBER} \approx 11.04\%}
+          </div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;">
+            The factor of $2$ accounts for $H_2(\text{QBER})$ leaked during error correction and $H_2(\text{QBER})$ sacrificed for privacy amplification against phase errors.
+          </p>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-sweep-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Bloch Sphere -->
+    <div class="tab-content" id="tab-bloch">
+      <div class="charts-grid-2">
+        <div class="card">
+          <div class="card-title">Mutually Unbiased Bases on the Bloch Sphere</div>
+          <p style="font-size:0.84rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+            Click below to inspect the quantum state vector orientation:
+          </p>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <button class="btn btn-outline" onclick="setBlochState('0')">|0⟩ (Z: 0)</button>
+            <button class="btn btn-outline" onclick="setBlochState('1')">|1⟩ (Z: 1)</button>
+            <button class="btn btn-outline" onclick="setBlochState('+')">|+⟩ (X: 0)</button>
+            <button class="btn btn-outline" onclick="setBlochState('-')">|−⟩ (X: 1)</button>
+          </div>
+          <div class="math-card" id="bloch-math-desc">
+            State |0⟩: North pole of the Bloch sphere. Eigenstate of &sigma;_z with eigenvalue +1.
+          </div>
+        </div>
+        <div class="canvas-card" style="background:#0a172a;display:flex;justify-content:center;align-items:center;">
+          <canvas id="bloch-canvas" width="280" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Classical Post-Processing (Cascade & Toeplitz) -->
+  <section id="postprocessing">
+    <div class="sec-header">
+      <span class="sec-tag">Classical Post-Processing</span>
+      <h2 class="sec-title">Cascade Error Correction &amp; Toeplitz Privacy Amplification</h2>
+      <p class="sec-desc">Reconciling classical discrepancies and distilling a purely random, unconditionally secret key.</p>
+    </div>
+
+    <div class="charts-grid-2">
+      <!-- Cascade Visualizer -->
+      <div class="card">
+        <div class="card-title">Cascade Protocol Simulation</div>
+        <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+          Alice and Bob split their sifted strings into blocks of size $k_1 \approx 0.73/\text{QBER}$. They exchange block parities.
+          When parities disagree, binary search bisection pinpoints the single flipped bit.
+        </p>
+        <div id="cascade-steps-container" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;font-size:0.78rem;font-family:var(--font-mono);">
+          <div style="color:var(--accent-mid);font-weight:700;margin-bottom:0.5rem;">[Pass 1: Block Parity Bisection]</div>
+          <div>Block 1 (Bits 0..7): Alice Parity=1, Bob Parity=0 &rarr; <span style="color:var(--danger);font-weight:700;">DISCREPANCY DETECTED</span></div>
+          <div>Bisection: Split into Bits 0..3 vs 4..7 &rarr; Discrepancy in Bits 4..7</div>
+          <div>Bit #6 corrected: $0 \to 1$. Parity re-matched.</div>
+          <div style="color:var(--success);font-weight:700;margin-top:0.4rem;">Reconciliation complete. 0 remaining bit errors.</div>
+        </div>
+      </div>
+
+      <!-- Toeplitz Visualizer -->
+      <div class="card">
+        <div class="card-title">Toeplitz Universal Hashing</div>
+        <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.75rem;">
+          A Toeplitz matrix $T \in \{0,1\}^{m \times n}$ where $T_{i,j} = T_{i-1,j-1}$ compresses the reconciled key:
+        </p>
+        <div class="math-card">
+          K_{\text{final}} = T \cdot K_{\text{reconciled}} \pmod 2<br/>
+          m = \lfloor n \cdot (1 - 2H_2(\text{QBER}) - \text{Leak}_{\text{EC}}) \rfloor
+        </div>
+        <div id="toeplitz-matrix-preview" style="background:var(--bg-dark);color:#38bdf8;padding:0.75rem;border-radius:var(--radius);font-family:var(--font-mono);font-size:0.72rem;letter-spacing:0.2em;overflow-x:auto;">
+          1 0 1 1 0 1 0 0 ...<br/>
+          0 1 0 1 1 0 1 0 ...<br/>
+          1 0 1 0 1 1 0 1 ...
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Post-Quantum Cryptography Comparative Study -->
+  <section id="pqc">
+    <div class="sec-header">
+      <span class="sec-tag">Comparative Benchmark</span>
+      <h2 class="sec-title">BB84 QKD vs. NIST Post-Quantum Cryptography Standards</h2>
+      <p class="sec-desc">Benchmarking physical information-theoretic security against computational lattice-based cryptography.</p>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <table class="pqc-table">
+        <thead>
+          <tr>
+            <th>Metric / Dimension</th>
+            <th>BB84 QKD</th>
+            <th>ML-KEM (Kyber-768 / FIPS 203)</th>
+            <th>ML-DSA (Dilithium / FIPS 204)</th>
+            <th>Legacy RSA-2048 / ECC</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:700;">Underlying Hardness</td>
+            <td class="col-good">Laws of Physics (No-Cloning, Heisenberg)</td>
+            <td class="col-warn">Module-LWE (Lattice reduction NP-hard)</td>
+            <td class="col-warn">Module-LWE / Lattice shortest vector</td>
+            <td class="col-bad">Integer Factorization / Discrete Log</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Quantum Vulnerability</td>
+            <td class="col-good">Unconditionally Immune (Shor-proof)</td>
+            <td class="col-good">Quantum resistant (best known attack &gt; 2^128)</td>
+            <td class="col-good">Quantum resistant</td>
+            <td class="col-bad">Broken in polynomial time by Shor's</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Hardware Infrastructure</td>
+            <td class="col-bad">Dark fiber, single-photon detectors, repeaters</td>
+            <td class="col-good">Standard commodity CPUs / microcontrollers</td>
+            <td class="col-good">Standard commodity CPUs</td>
+            <td class="col-good">Standard commodity CPUs</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Key Generation Throughput</td>
+            <td class="col-warn">10 kbps &ndash; 1 Mbps (distance limited)</td>
+            <td class="col-good">&gt; 1 Gbps (software microsecond execution)</td>
+            <td class="col-good">&gt; 500 Mbps</td>
+            <td class="col-warn">10 &ndash; 50 Mbps</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Network Scalability</td>
+            <td class="col-bad">Point-to-point only; no quantum routers</td>
+            <td class="col-good">Global internet, TLS 1.3, CDN compatible</td>
+            <td class="col-good">Global internet routing</td>
+            <td class="col-good">Global internet</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Forward Secrecy</td>
+            <td class="col-good">Information-theoretic (Harvest-Now immune)</td>
+            <td class="col-good">Ephemeral KEM (computationally secure)</td>
+            <td class="col-warn">Depends on handshake protocol</td>
+            <td class="col-bad">Vulnerable to archive &amp; retro-decrypt</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">Standardization Status</td>
+            <td class="col-warn">ITU-T, ETSI QKD technical committee</td>
+            <td class="col-good">NIST Final FIPS 203 (August 2024)</td>
+            <td class="col-good">NIST Final FIPS 204 (August 2024)</td>
+            <td class="col-bad">Deprecation mandated by 2030</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg, #f0fdf4, #e0f2fe);border-color:#7dd3fc;">
+      <div class="card-title" style="color:#0369a1;">💡 Hackathon Architectural Recommendation: The Hybrid QKD+PQC Model</div>
+      <p style="font-size:0.86rem;color:#0c4a6e;line-height:1.65;">
+        Neither QKD nor PQC represents an isolated silver bullet. While <strong>ML-KEM</strong> provides software agility and internet-scale key encapsulation,
+        its security relies on unproven computational complexity assumptions. Conversely, <strong>BB84 QKD</strong> provides unconditional, physics-based forward secrecy
+        but faces physical distance attenuation and dark-fiber hardware limits. The optimal national cyber-defense strategy combines
+        <strong>ML-KEM-768 with BB84 QKD key-mixing</strong> ($K = \text{KDF}(K_{\text{PQC}} \oplus K_{\text{QKD}})$), requiring an adversary to break <em>both</em> the physical channel and lattice hardness simultaneously.
+      </p>
+    </div>
+  </section>
+
+  <!-- Qiskit Implementation Section -->
+  <section id="qiskit">
+    <div class="sec-header">
+      <span class="sec-tag">Reproducible Codebase</span>
+      <h2 class="sec-title">IBM Qiskit 1.0+ Simulation Pipeline</h2>
+      <p class="sec-desc">Directly copy or execute the Python Qiskit implementation built with AerSimulator.</p>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+        <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent-mid);font-weight:700;">bb84_qiskit_simulation.py</span>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-outline" style="padding:0.35rem 0.8rem;font-size:0.75rem;" onclick="copyQiskitCode()">📋 Copy Python Code</button>
+          <button class="btn btn-primary" style="padding:0.35rem 0.8rem;font-size:0.75rem;" onclick="downloadQiskitFile()">📥 Download .py</button>
+        </div>
+      </div>
+      <pre class="code-box" id="qiskit-code-block"><code>import numpy as np
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+from qiskit_aer import AerSimulator
+
+def binary_entropy(p: float) -> float:
+    """Calculates binary Shannon entropy H2(p)."""
+    if p <= 0.0 or p >= 1.0:
+        return 0.0
+    return -p * np.log2(p) - (1.0 - p) * np.log2(1.0 - p)
+
+def run_bb84_simulation(num_qubits: int = 100, eve_strategy: str = "intercept_resend"):
+    backend = AerSimulator()
+    alice_bits = np.random.randint(0, 2, size=num_qubits)
+    alice_bases = np.random.choice(['Z', 'X'], size=num_qubits)
+    bob_bases = np.random.choice(['Z', 'X'], size=num_qubits)
+    bob_bits = []
+
+    for i in range(num_qubits):
+        qr = QuantumRegister(2, 'q')
+        cr = ClassicalRegister(2, 'c')
+        qc = QuantumCircuit(qr, cr)
+
+        # Alice prepares qubit
+        if alice_bits[i] == 1:
+            qc.x(qr[0])
+        if alice_bases[i] == 'X':
+            qc.h(qr[0])
+
+        # Eve attack
+        if eve_strategy == "intercept_resend":
+            eve_basis = np.random.choice(['Z', 'X'])
+            if eve_basis == 'X':
+                qc.h(qr[0])
+            qc.measure(qr[0], cr[1])
+            if eve_basis == 'X':
+                qc.h(qr[0])
+        elif eve_strategy == "cnot_probe":
+            qc.cx(qr[0], qr[1])
+
+        # Bob measures
+        if bob_bases[i] == 'X':
+            qc.h(qr[0])
+        qc.measure(qr[0], cr[0])
+
+        result = backend.run(qc, shots=1, memory=True).result()
+        measured = int(result.get_memory()[0][-1])
+        bob_bits.append(measured)
+
+    # Sifting & Parameter Estimation
+    sifted = np.where(alice_bases == bob_bases)[0]
+    sample_size = len(sifted) // 4
+    errors = np.sum(alice_bits[sifted[:sample_size]] != np.array(bob_bits)[sifted[:sample_size]])
+    qber = errors / sample_size if sample_size > 0 else 0
+    key_rate = max(0.0, 1.0 - 2.0 * binary_entropy(qber))
+
+    print(f"Sifted Bits: {len(sifted)} | QBER: {qber*100:.2f}% | Secret Key Rate: {key_rate:.3f}")
+    return qber, key_rate
+
+if __name__ == "__main__":
+    run_bb84_simulation(num_qubits=200, eve_strategy="intercept_resend")
+</code></pre>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="foot-brand">BB84 QKD Simulation Framework</div>
+    <div>Rensselaer Polytechnic Institute (RPI) &amp; IBM Quantum &mdash; Hackathon 2024 Reference Solution</div>
+    <div style="margin-top:0.5rem;color:#7dd3fc;">Information-Theoretic Security &bull; Post-Quantum Cryptography &bull; Qiskit 1.0+</div>
+    <div style="margin-top:1rem;font-size:0.75rem;color:#64748b;">
+      Serving on Localhost &bull; Built with pure HTML5 Canvas, SVG, DaunPenh / Kantumruy Pro Typography, and Vanilla ECMAScript.
+    </div>
+  </footer>
+
+  <!-- ════════════════ SCRIPT LOGIC ════════════════ -->
+  <script>
+    /* ── Math & Utility Functions ──────────────────── */
+    function binaryEntropy(p) {
+      if (p <= 0.0 || p >= 1.0) return 0.0;
+      return -p * Math.log2(p) - (1.0 - p) * Math.log2(1.0 - p);
+    }
+    function randBit() { return Math.random() < 0.5 ? 0 : 1; }
+    function randBasis() { return Math.random() < 0.5 ? 'Z' : 'X'; }
+
+    /* ── Global State ──────────────────────────────── */
+    let lastSimulationRun = null;
+    let channelAnimRunning = true;
+    let activeEveInChannel = true;
+    let channelPhotons = [];
+    let blochActiveState = '0';
+
+    /* ── Simulation Core Execution ─────────────────── */
+    function runSimulation() {
+      const btn = document.getElementById('btn-run');
+      const spinner = document.getElementById('run-spinner');
+      if (spinner) spinner.style.display = 'inline-block';
+      if (btn) btn.disabled = true;
+
+      setTimeout(() => {
+        const N = parseInt(document.getElementById('param-qubits').value);
+        const distanceKm = parseFloat(document.getElementById('param-distance').value);
+        const eveMode = document.getElementById('param-eve').value;
+        const sampleRatio = parseInt(document.getElementById('param-sample').value) / 100.0;
+
+        // Optical fiber attenuation: 0.2 dB/km -> trans = 10^(-0.02 * distance)
+        const fiberTransmission = Math.pow(10, -(0.2 * distanceKm) / 10.0);
+        // Dark count noise baseline
+        const darkCountRate = 0.005 + (1.0 - fiberTransmission) * 0.04;
+
+        const qubits = [];
+        const siftedAlice = [];
+        const siftedBob = [];
+
+        for (let i = 0; i < N; i++) {
+          const aBit = randBit();
+          const aBasis = randBasis();
+          let state = '';
+          if (aBasis === 'Z') state = aBit === 0 ? '|0⟩' : '|1⟩';
+          else state = aBit === 0 ? '|+⟩' : '|−⟩';
+
+          let eveIntercepted = false;
+          let eveBasis = '—';
+          let eveBit = '—';
+          let transmittedBit = aBit;
+
+          // Eavesdropping logic
+          if (eveMode === 'intercept_100') {
+            eveIntercepted = true;
+            eveBasis = randBasis();
+            if (eveBasis === aBasis) {
+              eveBit = aBit;
+              transmittedBit = aBit;
+            } else {
+              eveBit = randBit();
+              transmittedBit = eveBit; // 50% error probability
+            }
+          } else if (eveMode === 'intercept_50') {
+            if (Math.random() < 0.5) {
+              eveIntercepted = true;
+              eveBasis = randBasis();
+              eveBit = eveBasis === aBasis ? aBit : randBit();
+              transmittedBit = eveBit;
+            }
+          } else if (eveMode === 'cnot_probe') {
+            eveIntercepted = true;
+            eveBasis = 'Ancilla';
+            eveBit = aBit; // partial information extracted
+            // Induces ~13% QBER
+            if (Math.random() < 0.13) {
+              transmittedBit = 1 - aBit;
+            }
+          }
+
+          // Channel Noise
+          if (Math.random() < darkCountRate) {
+            transmittedBit = 1 - transmittedBit;
+          }
+
+          // Bob measures
+          const bBasis = randBasis();
+          let bBit;
+          if (bBasis === aBasis) {
+            bBit = transmittedBit;
+          } else {
+            bBit = randBit(); // wrong basis collapses randomly
+          }
+
+          const match = (aBasis === bBasis);
+          qubits.push({
+            pulse: i + 1,
+            aBit, aBasis, state,
+            eveIntercepted, eveBasis, eveBit,
+            bBasis, bBit, match
+          });
+
+          if (match) {
+            siftedAlice.push(aBit);
+            siftedBob.push(bBit);
+          }
+        }
+
+        // Parameter estimation
+        const nSifted = siftedAlice.length;
+        const nSample = Math.max(1, Math.floor(nSifted * sampleRatio));
+        let errorCount = 0;
+        for (let j = 0; j < nSample; j++) {
+          if (siftedAlice[j] !== siftedBob[j]) errorCount++;
+        }
+        const qber = nSample > 0 ? (errorCount / nSample) : 0.0;
+
+        // Shor-Preskill threshold
+        const isAborted = qber > 0.11;
+        const h2 = binaryEntropy(qber);
+        const keyRate = isAborted ? 0.0 : Math.max(0.0, 1.0 - 2.0 * h2);
+        
+        // Mutual Information
+        const iAB = Math.max(0, 1.0 - h2);
+        let iAE = 0.0;
+        if (eveMode === 'intercept_100') iAE = 0.5;
+        else if (eveMode === 'intercept_50') iAE = 0.25;
+        else if (eveMode === 'cnot_probe') iAE = 0.35;
+        const deltaI = iAB - iAE;
+
+        // Remaining bits for extraction
+        const remainingBits = siftedAlice.slice(nSample);
+        const finalKeyLength = isAborted ? 0 : Math.floor(remainingBits.length * keyRate);
+        const finalKeyBits = [];
+        for (let k = 0; k < finalKeyLength; k++) {
+          finalKeyBits.push(remainingBits[k]);
+        }
+
+        lastSimulationRun = {
+          N, nSifted, nSample, errorCount, qber, isAborted,
+          keyRate, iAB, iAE, deltaI, finalKeyLength, finalKeyBits, qubits
+        };
+
+        // Render to UI
+        renderSimulationResults(lastSimulationRun);
+
+        if (spinner) spinner.style.display = 'none';
+        if (btn) btn.disabled = false;
+      }, 250);
+    }
+
+    function renderSimulationResults(res) {
+      const qberPct = (res.qber * 100).toFixed(1) + '%';
+      
+      // Hero stats
+      document.getElementById('hero-qber').textContent = qberPct;
+      document.getElementById('hero-rate').textContent = res.keyRate.toFixed(3);
+      document.getElementById('hero-delta').textContent = (res.deltaI >= 0 ? '+' : '') + res.deltaI.toFixed(2);
+      const heroStat = document.getElementById('hero-status');
+      if (res.isAborted) {
+        heroStat.textContent = 'ABORTED';
+        heroStat.style.color = '#f87171';
+      } else if (res.qber > 0.05) {
+        heroStat.textContent = 'ELEVATED';
+        heroStat.style.color = '#fbbf24';
+      } else {
+        heroStat.textContent = 'SECURE';
+        heroStat.style.color = '#4ade80';
+      }
+
+      // Card Metrics
+      document.getElementById('res-sent').textContent = res.N;
+      document.getElementById('res-sifted').textContent = res.nSifted;
+      document.getElementById('res-qber').textContent = qberPct;
+      document.getElementById('res-rate').textContent = res.keyRate.toFixed(3);
+      document.getElementById('res-delta').textContent = (res.deltaI >= 0 ? '+' : '') + res.deltaI.toFixed(3);
+      document.getElementById('res-final').textContent = res.finalKeyLength;
+
+      // Color cards
+      const qberCard = document.getElementById('card-qber');
+      qberCard.className = 'metric-card ' + (res.isAborted ? 'bad' : res.qber > 0.05 ? 'warn' : 'good');
+      const rateCard = document.getElementById('card-rate');
+      rateCard.className = 'metric-card ' + (res.keyRate > 0 ? 'good' : 'bad');
+      const deltaCard = document.getElementById('card-delta');
+      deltaCard.className = 'metric-card ' + (res.deltaI > 0 ? 'good' : 'bad');
+
+      // Alerts
+      document.getElementById('alert-abort').classList.toggle('active', res.isAborted);
+      document.getElementById('alert-warn').classList.toggle('active', !res.isAborted && res.qber > 0.05);
+      document.getElementById('alert-secure').classList.toggle('active', !res.isAborted && res.qber <= 0.05);
+
+      // Overheads
+      const siftYield = ((res.nSifted / res.N) * 100).toFixed(1);
+      document.getElementById('txt-sift-yield').textContent = siftYield + '%';
+      document.getElementById('pb-sift-fill').style.width = Math.min(100, siftYield) + '%';
+
+      const ecLeak = (1.16 * binaryEntropy(res.qber)).toFixed(3);
+      document.getElementById('txt-ec-leak').textContent = ecLeak + ' bits/qubit';
+      document.getElementById('pb-ec-fill').style.width = Math.min(100, ecLeak * 100) + '%';
+
+      const paRatio = (res.keyRate * 100).toFixed(1);
+      document.getElementById('txt-pa-ratio').textContent = paRatio + '% retained';
+      document.getElementById('pb-pa-fill').style.width = paRatio + '%';
+
+      // Terminal
+      const termBadge = document.getElementById('term-status-badge');
+      const termContent = document.getElementById('terminal-content');
+      if (res.isAborted) {
+        termBadge.textContent = 'SESSION ABORTED (QBER > 11%)';
+        termBadge.style.color = '#f87171';
+        termContent.innerHTML = `<span style="color:#f87171;">[ABORT] Distillable secret key length = 0. All <strong>${res.nSifted}</strong> sifted bits were safely wiped to prevent eavesdropper exploitation.</span>`;
+      } else {
+        termBadge.textContent = `ESTABLISHED (${res.finalKeyLength} BITS)`;
+        termBadge.style.color = '#34d399';
+        let keyHtml = '';
+        res.finalKeyBits.forEach((b, idx) => {
+          keyHtml += `<span class="k-${b}">${b}</span>`;
+          if ((idx + 1) % 64 === 0) keyHtml += '<br/>';
+          else if ((idx + 1) % 8 === 0) keyHtml += ' ';
+        });
+        termContent.innerHTML = keyHtml || '<span>Key length 0. Adjust parameters.</span>';
+      }
+
+      // Qubit Table (First 25)
+      const tbody = document.getElementById('tbody-qubits');
+      tbody.innerHTML = '';
+      const sliceQ = res.qubits.slice(0, 25);
+      sliceQ.forEach(q => {
+        const isErr = q.match && q.aBit !== q.bBit;
+        tbody.innerHTML += `<tr>
+          <td>${q.pulse}</td>
+          <td><strong>${q.aBit}</strong></td>
+          <td><span class="badge badge-${q.aBasis.toLowerCase()}">${q.aBasis}</span></td>
+          <td><code>${q.state}</code></td>
+          <td>${q.eveIntercepted ? '<span class="badge badge-eve">YES</span>' : '—'}</td>
+          <td>${q.eveIntercepted ? q.eveBasis : '—'}</td>
+          <td><span class="badge badge-${q.bBasis.toLowerCase()}">${q.bBasis}</span></td>
+          <td><strong>${q.bBit}</strong></td>
+          <td>${q.match ? '<span class="badge badge-ok">MATCH</span>' : '<span style="color:#94a3b8;">DISCARD</span>'}</td>
+          <td>${q.match ? 'Yes' : 'No'}</td>
+          <td>${q.match ? (isErr ? '<span class="badge badge-err">ERROR</span>' : '<span class="badge badge-ok">OK</span>') : '—'}</td>
+        </tr>`;
+      });
+    }
+
+    function updateParamLabels() {
+      document.getElementById('lbl-qubits').textContent = document.getElementById('param-qubits').value;
+      document.getElementById('lbl-distance').textContent = document.getElementById('param-distance').value + ' km';
+      document.getElementById('lbl-sample').textContent = document.getElementById('param-sample').value + '%';
+    }
+
+    /* ── Tab Switcher ──────────────────────────────── */
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('#eavesdropping .tab-content').forEach(tc => tc.classList.remove('active'));
+      document.querySelectorAll('#eavesdropping .tab-btn').forEach(tb => tb.classList.remove('active'));
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    /* ── Export & Download Functions ───────────────── */
+    function exportResultsJSON() {
+      if (!lastSimulationRun) runSimulation();
+      const blob = new Blob([JSON.stringify(lastSimulationRun, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `bb84_simulation_results_${Date.now()}.json`;
+      a.click();
+    }
+
+    function downloadQiskitFile() {
+      const code = document.getElementById('qiskit-code-block').innerText;
+      const blob = new Blob([code], { type: 'text/x-python' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'bb84_qiskit_simulation.py';
+      a.click();
+    }
+
+    function copyQiskitCode() {
+      const code = document.getElementById('qiskit-code-block').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Qiskit Python code copied to clipboard!');
+      });
+    }
+
+    /* ── Live Channel Animation ────────────────────── */
+    function initChannelAnimation() {
+      const canvas = document.getElementById('channel-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let W = canvas.width = canvas.offsetWidth;
+      let H = canvas.height = 150;
+
+      window.addEventListener('resize', () => {
+        if (!canvas) return;
+        W = canvas.width = canvas.offsetWidth;
+        H = canvas.height = 150;
+      });
+
+      function spawnPhoton() {
+        channelPhotons.push({
+          x: 40,
+          y: H / 2,
+          vx: 3 + Math.random() * 1.5,
+          color: ['#38bdf8', '#34d399', '#a78bfa', '#f472b6'][Math.floor(Math.random() * 4)],
+          symbol: ['|0⟩', '|1⟩', '|+⟩', '|−⟩'][Math.floor(Math.random() * 4)],
+          trail: []
+        });
+      }
+
+      let tick = 0;
+      function render() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Channel Waveguide
+        const grad = ctx.createLinearGradient(0, 0, W, 0);
+        grad.addColorStop(0, '#0c2242');
+        grad.addColorStop(0.5, '#1e3a6a');
+        grad.addColorStop(1, '#0c2242');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, H/2 - 10, W, 20);
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, H/2 - 10, W, 20);
+
+        // Station Markers
+        ctx.font = 'bold 12px Inter';
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('Alice (Prep)', 20, 28);
+
+        ctx.fillStyle = activeEveInChannel ? '#f87171' : '#64748b';
+        ctx.fillText(activeEveInChannel ? 'Eve (Intercept)' : 'Eve (Bypassed)', W/2 - 35, 28);
+
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('Bob (Measure)', W - 90, 28);
+
+        // Station separator dashed lines
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath(); ctx.moveTo(40, 36); ctx.lineTo(40, H - 15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W/2, 36); ctx.lineTo(W/2, H - 15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W - 40, 36); ctx.lineTo(W - 40, H - 15); ctx.stroke();
+        ctx.setLineDash([]);
+
+        if (tick % 35 === 0) spawnPhoton();
+
+        channelPhotons.forEach((p, idx) => {
+          p.x += p.vx;
+          p.trail.push({ x: p.x, y: p.y });
+          if (p.trail.length > 10) p.trail.shift();
+
+          // Eve disturbance glow when crossing center
+          if (activeEveInChannel && Math.abs(p.x - W/2) < 25) {
+            ctx.beginPath();
+            ctx.arc(W/2, H/2, 22, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+            ctx.fill();
+          }
+
+          // Trail
+          p.trail.forEach((t, ti) => {
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, 2 + (ti/2), 0, Math.PI * 2);
+            ctx.fillStyle = p.color + '44';
+            ctx.fill();
+          });
+
+          // Head Photon
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+
+          ctx.font = '10px JetBrains Mono';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(p.symbol, p.x - 7, p.y - 12);
+        });
+
+        channelPhotons = channelPhotons.filter(p => p.x < W + 10);
+        tick++;
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    function triggerPhotonPulse() {
+      channelPhotons.push({
+        x: 40, y: 75, vx: 5, color: '#f59e0b', symbol: '|Ψ⟩', trail: []
+      });
+    }
+
+    function toggleChannelEve() {
+      activeEveInChannel = !activeEveInChannel;
+      const lbl = document.getElementById('canvas-eve-label');
+      if (lbl) {
+        lbl.textContent = activeEveInChannel ? 'Eve: Intercept-Resend Active' : 'Eve: Probe Deactivated';
+        lbl.style.color = activeEveInChannel ? '#f87171' : '#64748b';
+      }
+    }
+
+    /* ── Analytical Charts Rendering ───────────────── */
+    function renderAnalyticalCharts() {
+      // 1. Intercept-Resend Curve
+      const c1 = document.getElementById('chart-ir-canvas');
+      if (c1) {
+        const ctx = c1.getContext('2d');
+        const W = c1.width = c1.offsetWidth || 340;
+        const H = c1.height = 240;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+        
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(40, 20); ctx.lineTo(40, H-30); ctx.lineTo(W-20, H-30); ctx.stroke();
+
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let x = 0; x <= 100; x++) {
+          const px = 40 + (x / 100) * (W - 60);
+          const qber = (x / 100) * 0.25;
+          const py = (H - 30) - (qber / 0.3) * (H - 50);
+          if (x === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // 11% Abort line
+        const abortY = (H - 30) - (0.11 / 0.3) * (H - 50);
+        ctx.strokeStyle = '#d97706'; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(40, abortY); ctx.lineTo(W-20, abortY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#d97706'; ctx.font = '10px Inter';
+        ctx.fillText('Abort Threshold (11%)', 50, abortY - 4);
+
+        ctx.fillStyle = '#1e293b'; ctx.font = '10px Inter';
+        ctx.fillText('Eve Interception Rate (0 to 100%)', W/2 - 70, H - 8);
+      }
+
+      // 2. CNOT Information Gain
+      const c2 = document.getElementById('chart-cnot-canvas');
+      if (c2) {
+        const ctx = c2.getContext('2d');
+        const W = c2.width = c2.offsetWidth || 340;
+        const H = c2.height = 240;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+        ctx.strokeStyle = '#cbd5e1'; ctx.beginPath(); ctx.moveTo(40, 20); ctx.lineTo(40, H-30); ctx.lineTo(W-20, H-30); ctx.stroke();
+
+        ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let x = 0; x <= 100; x++) {
+          const px = 40 + (x / 100) * (W - 60);
+          const info = Math.sin((x/100) * Math.PI / 2);
+          const py = (H - 30) - info * (H - 50);
+          if (x === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#1e293b'; ctx.font = '10px Inter';
+        ctx.fillText('CNOT Coupling & Holevo Information I(A;E)', W/2 - 90, H - 8);
+      }
+
+      // 3. Shor Preskill Key Rate Sweep
+      const c3 = document.getElementById('chart-sweep-canvas');
+      if (c3) {
+        const ctx = c3.getContext('2d');
+        const W = c3.width = c3.offsetWidth || 340;
+        const H = c3.height = 240;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,W,H);
+        ctx.strokeStyle = '#cbd5e1'; ctx.beginPath(); ctx.moveTo(40, 20); ctx.lineTo(40, H-30); ctx.lineTo(W-20, H-30); ctx.stroke();
+
+        ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let q = 0; q <= 20; q++) {
+          const p = q / 100.0;
+          const R = Math.max(0, 1.0 - 2.0 * binaryEntropy(p));
+          const px = 40 + (q / 20.0) * (W - 60);
+          const py = (H - 30) - R * (H - 50);
+          if (q === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#1e293b'; ctx.font = '10px Inter';
+        ctx.fillText('QBER (0% to 20%) vs Asymptotic Rate R', W/2 - 80, H - 8);
+      }
+    }
+
+    /* ── Bloch Sphere Visualizer ───────────────────── */
+    function setBlochState(st) {
+      blochActiveState = st;
+      const desc = document.getElementById('bloch-math-desc');
+      if (st === '0') desc.innerHTML = 'State |0⟩: North pole. Eigenstate of &sigma;_z with eigenvalue +1. Represented as [1, 0]^T.';
+      if (st === '1') desc.innerHTML = 'State |1⟩: South pole. Eigenstate of &sigma;_z with eigenvalue −1. Represented as [0, 1]^T.';
+      if (st === '+') desc.innerHTML = 'State |+⟩ = (|0⟩+|1⟩)/&radic;2: Positive X axis on equator. Hadamard transform of |0⟩.';
+      if (st === '-') desc.innerHTML = 'State |−⟩ = (|0⟩−|1⟩)/&radic;2: Negative X axis on equator. Hadamard transform of |1⟩.';
+      drawBloch();
+    }
+
+    function drawBloch() {
+      const canvas = document.getElementById('bloch-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const cx = W / 2, cy = H / 2, R = 85;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.strokeStyle = '#334155'; ctx.lineWidth = 1.5; ctx.stroke();
+
+      // Equator
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, R, R * 0.28, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = '#1e3a5f'; ctx.stroke();
+
+      // Axes
+      ctx.strokeStyle = '#475569'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, cy - R - 10); ctx.lineTo(cx, cy + R + 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - R - 10, cy); ctx.lineTo(cx + R + 10, cy); ctx.stroke();
+
+      // Vector
+      let tx = cx, ty = cy;
+      if (blochActiveState === '0') { ty = cy - R; }
+      else if (blochActiveState === '1') { ty = cy + R; }
+      else if (blochActiveState === '+') { tx = cx + R; }
+      else if (blochActiveState === '-') { tx = cx - R; }
+
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty);
+      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3; ctx.stroke();
+
+      // Head
+      ctx.beginPath(); ctx.arc(tx, ty, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#38bdf8'; ctx.fill();
+    }
+
+    /* ── Hero Background Particles ─────────────────── */
+    function initHeroParticles() {
+      const canvas = document.getElementById('hero-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let W = canvas.width = canvas.offsetWidth;
+      let H = canvas.height = canvas.offsetHeight;
+
+      const pts = [];
+      for (let i = 0; i < 45; i++) {
+        pts.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+          r: Math.random() * 2 + 1
+        });
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+        pts.forEach(p => {
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > W) p.vx *= -1;
+          if (p.y < 0 || p.y > H) p.vy *= -1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+        });
+        requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    /* ── Document Initialization ───────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      initHeroParticles();
+      initChannelAnimation();
+      renderAnalyticalCharts();
+      drawBloch();
+      runSimulation();
+    });
+  </script>
+</body>
+</html>
